@@ -1,0 +1,2107 @@
+---  
+title: "CS x460 Challenge Problems"
+author: "Phan, Elaine"
+date: "December 12, 2018"
+output:
+  html_document:
+    toc: yes
+---
+
+    
+
+#  Instructions  (read carefully!)
+
+*  Use this R Markdown .Rmd file to complete your project
+     +  Change the author to your name above.  
+     +  Rename this file to **challenge_problems_ your last first name.Rmd** (of course, substitute **YOUR** last_name_first_name!)
+     +  Submit **both** your knitted .html file and R Markdown .Rmd file to Canvas assignment Challenge Problem.  
+     +  **No email submissions will be accepted** submit to Canvas only (I will dock points for this!)  
+     +  Due: December 12, 2018, 6:30 PM.  Because of UCB grading requirements, **no late submissions will be accepted.**  
+     +  Make sure you leave extra time to submit your assignment in case you run into problems.  I will grade your final submission.  
+  
+***  
+  
+#  **Mandatory Requirements**  
+
+1.  Do your own work.  **No sharing code, no sharing R Markdown text**.
+2.  Use only concepts, topics, and packages covered in class (zero credit otherwise).
+3.  Everything you submit should be contained in this .Rmd file, data files assumed to be in the same directory.  I should be able to download it on to my computer and click "Knit" in Rstudio to generate your submitted .html results.  Non-reproducible submissions will result in no credit.
+3.  Use tidyverse (e.g., ggplot) packages and tidy approaches in place of base R when possible and appropriate.
+4.  Use consistent and accepted R style: meaningful variable names, snake_case_variable_names, properly indented code in code chunks  
+5.  **Your final knitted .html product should be clear, readable, and even understandable to an outside reader.**
+6.  Use glimpse() and/or head() to show results.  **Do not show long printouts of data or results** (points will be deducted for this)
+7.  Organize your code into readable code chunks.  Points will be deducted for excessively long code chunks.
+8.  Put analysis in R Markdown text, use code comments to clarify code only, use R Markdown text for explanations!
+9.  If you have any questions, please contact me individually by email.  
+
+#  Grading Criteria  
+
+*  Think of this as the type of challenge problem typically given to a Data Scientist/Analyst job candidate.
+*  Whether your product **tells a coherent story** about the data + problem
+*  Completeness
+*  Clarity of code and explanations  
+*  Correctness of code and explanations
+*  Important: follow Mandatory Requirements described above!
+
+```{r startup, warning=FALSE, message=FALSE, comment=NA, echo=FALSE}
+library(tidyverse)
+knitr::opts_chunk$set(comment=NA)
+```
+
+#  **Problem 1**
+
+*  Use the dataset healthcare data frame (see below) to fit  
+     +  an OLSR linear (lm) model
+     +  a CART (rpart) model
+*  to predict **costs**
+
+*  Explore the dataset as needed to guide your analysis  
+*  Prepare your dataset (e.g., to avoid overfitting)  
+*  Fit your models using lm and rpart  
+*  Tune your models to optimize performance    
+*  Show and *explain* your results, use plots where appropriate  
+*  Evaluate model performance  
+*  State your conclusions  
+
+Use **only** Ordinary Least Sum Regression (lm) and Classification Regression Tree (rpart) models; do not use caret in Problem 1   
+
+
+###Reading Data set Healthcare 
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+#  Do not change the code in this chunk!
+healthcare <- read_csv('healthcare.csv')
+```
+
+#Data Exploration
+
+```{r tidyverslibrary glimpse}
+library(tidyverse)
+library(dplyr)
+library(broom)
+glimpse(healthcare)
+```
+
+
+ ###Here are the list of Variables in the data set Healthcare
+ 
+###Summary gives us the values of the min, 1st quantiles, median, mean, 3rd quantiles and max values of each variable on a graph of each variable. 
+Describe give us the general discription of our variable, min max, mean, range.
+It is good to use these function to understand our data during the data explorations.
+```{r Psych library describe and summary}
+library(psych)
+describe(healthcare)
+summary(healthcare)
+```
+
+#Dplyr data explorations
+
+###Here I added a new column or variable called finalcosts where I added the the previous balance and the costs column together to make the finalcost column using mutate function. 
+```{r data exploration mutate addition of prevbaland cost}
+# Load the dplyr package
+library(dplyr)
+# Convert the healthcare data.frame into a  tbl
+healthcare1 <- as_tibble(healthcare)
+
+# Display the healthcare tbl
+head(healthcare)
+
+# Create the object carriers
+finalcosts <- healthcare1$costs
+# Add the new variable prev_balance+costs to a copy of healthcare and save the result as g1.
+g1 <- mutate(healthcare, finalcosts = costs + prev_balance)
+glimpse(g1)
+
+
+```
+
+###Body mass increase with final cost ( prev_balance + costs). I also factored in the graph to divide the smokers in blue and non smokers in red. Here you can see that non smokers are paying less for healthcare and smokers are paying a lot more around 25K-50K for healthcare cost. Insurance companies would have to charge smokers more in healthcare cost.  
+```{r eda scatterplot x bodymass y final cost}
+ggplot(data= g1, aes(x= body_mass, y = finalcosts, col=factor(smoker))) + geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+```
+
+###Here are the first 6 rows of the most significant variables  in the healthcare dataset with the lowest p values in the data set. I listed the first 6 rows to exam the data set since printing all rows would take up too much space. Here you can see that a 63 yrs old person with a body mass index of 36.7 pays less healthcare cost compared to an 18 year old smoker with a body mass of 42. Just by looking at those two patients you can see that these variable are very significant to the cost of healthcare. 
+```{r eda most significant viariables}
+# Print out a tbl with the four columns of healthcare related to most signicant data 
+mostsign<-select(healthcare, body_mass, age_yrs, smoker, no_children, costs)
+head(mostsign)
+```
+
+###The arrange function arranges all the column from least to the most. 
+1. Lowest costs column shows non smoking males with medium body mass, linving in the southeast with no children have the least cost in healthcare. 
+
+#People paying the most for healthcare costs are mostly smokers, people with negative prev_balances and are females with 4-3 or 0 children live in southwest, northeast, southeast.
+
+```{r eda arrange variables by values}
+arrangecosts<-arrange(healthcare, costs, body_mass, prev_balance, no_children)
+arrangecosts
+# in arrange: lowest costs column shows males and no smokers with medium body mass, southeast with no children pay less healthcare cost
+
+#people paying most healthcare costs are mostly smokers, have negative prev_balances and mostly females 4-3 or 0 children live in southwest, northeast, southeast
+```
+
+
+#Linear Regression model for Healthcare dataset where test all variables against costs except for the previous balance varoable
+```{r Linear regression mdl3 model cost -pre_balance}
+mdl3 <- lm(costs ~. -prev_balance , data = healthcare)
+summary(mdl3)
+```
+#1. Here is a linear regression model where we use all variables except previous balance.
+2. Most significant variables are age_yr,body_mass,no children and smokers.
+3. We want to know how well does the model fit the data. 
+  a. We will use R2 for this.
+  b. R2 is the proportion of variability in Y that is explained by our model. 
+  c. The R^2 is 0.75 which is good and adjusted r square(multiple features) is close to      R^2.    
+  d. We want a high R^2 value to show that our model is the best fit model.
+  e. R2 is always between 0 and 1
+  f. The bigger R2 is, the better your model fits the data
+  g. a small R2 doesn't always mean the model is a poor fit 
+  h. R2 always increases as you add more features to your model (the adjusted R2 should      be used instead - it penalizes the R2 for each additional feature)
+4. p-value in this case would be defined as: the probability of getting a coefficient as    or more extreme than what we got, if the true coefficient was actually zero. We         want a low p-Value (2.2e-16) which is a low pvalue(Pr is the symbol above for Pvalue)
+5. Std. Error is the standard deviation of the sampling distribution of the estimate of the coefficient under the linear regression model assumptions. Since we did not normalize the coefficient we can not use the std. error from this summary. The Standard error is an estimate of the variance of the strength of the effect, or the strength of the relationship between each causal variable and the predicted variable. If it's high, then the effect size will have to be stronger for us to be able to be sure that it's a real effect, and not just an artefact of randomness.
+
+
+6. t value is the value of the t-statistic for testing whether the corresponding regression coefficient is different from 0. The t-statistic is an estimate of how extreme the value you see is, relative to the standard error (assuming a normal distribution, centred on the null hypothesis).
+7. Pr. is the p-value for the hypothesis test for which the t value is the test statistic. It tells you the probability of a test statistic at least as unusual as the one you obtained, if the null hypothesis were true. In this case, the null hypothesis is that the true coefficient is zero; if that probability is low, it's suggesting that it would be rare to get a result as unusual as this if the coefficient were really zero.
+8. The F statistic on the last line is telling you whether the regression as a whole is performing 'better than random' - any set of random predictors will have some relationship with the response, so it's seeing whether your model fits better than you'd expect if all your predictors had no relationship with the response (beyond what would be explained by that randomness). This is used for a test of whether the model outperforms 'noise' as a predictor. The p-value in the last row is the p-value for that test, essentially comparing the full model you fitted with an intercept-only model.
+
+##Linear Regression on all the features or variables in the Healthcare data set
+```{r linear regression on all the features}
+mdl <- lm(costs ~ ., data = healthcare)
+summary(mdl)
+```
+1. Here is the summary of the linear regression with all the features. It looks like this r^2 and adjusted R^2 is higher than the one above but you also have to consider that more features giving you a higher R^2.
+2. The p-value is the same and still significant. The adjusted R ^2 was higher in this model of all features compared to mdl3 above which had the prev_balance removed. 
+
+##Box plot graphs of previous balance column vs costs
+```{r previous balance box plot}
+ggplot(data= healthcare, aes(X=cut(prev_balance, breaks = 15), y = costs)) + geom_boxplot() 
+     
+# non linear graph that is evenly distributed 
+```
+###Looks like the pre_balance variable has a parabola with prices owed and owed to them spreading out from zero to the positive and negative evenly.
+
+##Scatter plot of age vs costs
+```{r scatter plot of age and cost}
+ggplot(data= healthcare, aes(x= age_yrs, y = costs)) + geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+```
+###This looks like there are colinearity with increase healthcare cost with increase in age. 
+
+##Histogtam of the amount of patients at different age groups
+```{r histogram age}
+ggplot(healthcare,aes(x=age_yrs)) + geom_histogram(bins=100,alpha=0.5,fill='blue')
+```
+###Here is a histogram of the number of peoples from 10-70 ages in the patient population. It look like there is an increase number of patients at age 10 years old. the rest of the histogram levels out.  
+
+##Histogram of number of people at different BMI
+```{r histogram_bodymass}
+ggplot(healthcare,aes(x=body_mass)) + geom_histogram(bins=100,alpha=0.5,fill='blue')
+```
+###This histogram shows a bell curve distribution of the patient population's body mass index. The average body mass index is around  30 BMI. We have a few outlier patients with a BMI out in the 50 range and the minimum body mas is around 18 BMI. Otherwise the BMI has a normal distribution. 
+
+##Histogram of the number of people paying different costs for healthcare in the dataset
+```{r histogram costs}
+ggplot(healthcare,aes(x=costs)) + geom_histogram(bins=100,alpha=0.5,fill='blue')
+```
+##Looks like most people are paying around less then 5,000 in healthcare cost. There are a few outliers that pay a lot more. 
+
+##Histogram of the amount of people that carried a range of previous balance for healthcare.
+```{r prevvious balance histogram}
+ggplot(healthcare,aes(x=prev_balance)) + geom_histogram(bins=100,alpha=0.5,fill='blue')
+```
+##This is very similar to boxplot done earlier showing a normal distribution. 
+
+##Histogram of number of patients with 0-5 children in thier family. 
+```{r histogram no children}
+ggplot(healthcare,aes(x=no_children)) + geom_histogram(bins=20,alpha=0.5,fill='blue')
+```
+###Looks like there are more people paying for health care in this data set who have no children or between 0-2 kids in this data set. Maybe more people are single not married yet. 
+
+##Boxplot of patients from different regions vs the costs of healthcare
+```{r region boxplot}
+ggplot(healthcare) + geom_boxplot(aes(x= factor(region), y =costs))
+#region is similar except the southeast show that the cost of healthcare is higher. 
+```
+###Looks like we have people in southeast paying more for healthcare. The other regions look very close to each other with southwest a little lower in healthcare cost. 
+
+##Scatter plot showing healthcare cost increases with BMI, vs regions vs gender
+```{r scatter plot gender and bodymass}
+ggplot(data= healthcare, aes(x= body_mass, y = costs, color = factor(gender))) + geom_point(aes(shape=factor(region))) + geom_smooth(method = "lm", se = FALSE)
+#more body mass means your costs goes us as the bodymass increase
+
+```
+###Healthcare cost increases with body masss. The male blue line shows that males under twenty pay less for healthcare and after age 23 they start paying the same as females for healthcare. But when males reach their 30's they start paying more for healthcare cost compated to females. This scatter graph it is difficult to determine where people live determines the healthcare cost.
+
+```{r no children scatter plot and gender}
+ggplot(data= healthcare, aes(x= no_children, y = costs, color = factor(gender))) + geom_point(aes(shape=factor(region)), size=2) + geom_smooth(method = "lm", se = FALSE)
+#it is possible people large children incure less cost but htis is not strong. 
+```
+###looks like male and female both increase their healthcare cost as they have children. It seems like males pay a litte more if they grow their family. The region location of patiensts is hard to read in this graph. But seem like more southeast outliers paying 40K-60K
+
+##Scatter plot of BMI vs gender and region
+```{r body mass and cost gender and region}
+ggplot(data= healthcare, aes(x= age_yrs, y = costs, color=factor(gender)) )+ geom_point(aes(shape=factor(region))) + geom_smooth(method = "lm", se = FALSE)
+```
+###There is a correlation with age increaseing with cost and males pay more than females at the parallel rate. 
+
+#Scatterplot heat map
+```{r heat map with no children and body mass scatterplot}
+pl <-ggplot(healthcare,aes(x=body_mass, y=costs))
+pl2 <- pl+ geom_point(aes(color=no_children),size=2)
+pl3 <- pl2 + scale_color_gradient(low='blue',high='red')
+print(pl3)
+```
+###1.It looks like body mass increase as people pay more. 
+ 2.It seems hard to tell about how the number of children effect cost.  
+ 3.It seems like the blue=0 children are the ones at the bottom of the graph indicating people with zero children pay less cost for healthcare. 
+
+ 
+```{r previous balance and female and male}
+ggplot(data= healthcare, aes(x= prev_balance, y = costs,  color = factor(gender))) + geom_point()
+#doesn't look like there is a correlation 
+```
+###Doesn't look like there is a correlation. Most people do seem to have a previous balance of zero. 
+
+```{r scatter plot body mass and costs gender factor}
+ggplot(data= healthcare, aes(x= body_mass, y = costs,  color = factor(gender))) + geom_point() + geom_smooth(method = "lm", se = FALSE)
+health_sum =  summary(mdl)
+health_sum
+
+```
+###The male blue line shows that males under twenty pay less for healthcare and after age 23 they start paying the same as females for healthcare. But when males reach their 30's they start paying more for healthcare cost compated to females. 
+
+
+```{r ggplot age cost summary}
+ggplot(data= healthcare, aes(x= age_yrs, y = costs,  color = factor(gender))) + geom_point() + geom_smooth(method = "lm", se = FALSE)
+health_sum =  summary(mdl)
+health_sum
+```
+Another similar graph with coloring the gender. There seems to be not much differene between male and female. 
+
+##Linear Regression on all the features or variables in the Healthcare data set
+```{r ggolot body mass and cost scatter plot}
+
+health_sum =  summary(mdl)
+health_sum
+```
+This model with cost and body mass is more correlated with R^2 0.75 and pvalue = 2.2e-16
+
+##Linear Regression on all the features or variables except gender in the Healthcare data set
+```{r modelpract cost and gender lm model}
+# bodymass model
+modelpract <- lm(costs ~ . -gender, healthcare )
+
+summary(modelpract)
+coef(modelpract)
+```
+This linear regression model is similar to the above model with the same p value and R^2 value
+
+##Linear Regression the features of body mass in the Healthcare data set vs costs.
+```{r mod lm model}
+# bodymass model
+mod <- lm(costs ~ body_mass, data = healthcare )
+summary(mod)
+coef(mod)
+```
+##Mean Residuals for the Linear regression ran above.
+
+###Mod
+```{r mean residual}
+mean(residuals(mod))
+```
+###The difference between the observed value of the dependent variable (y) and the predicted value (ŷ) is called the residual (e)
+Each data point has one residual. Residual = Observed value - Predicted value. e = y - ŷ Both the sum and the mean of the residuals are equal to zero.
+
+
+###Modelpract
+```{r mean residual modelpract}
+mean(residuals(modelpract))
+```
+
+###MDL
+```{r mean residual mdl}
+mean(residuals(mdl))
+```
+
+###All the Mean Residuals were equal to zero. Meaning that the Residual = Observed value - Predicted value. This says that observed value and predicted values were very close they cancel each other out. 
+
+##RMSE Root Mean Square Error
+```{r RMSE}
+sqrt(sum(residuals(mod)^2)/df.residual(mod))
+```
+###Root Mean Square Error (RMSE) is the standard deviation of the residuals (prediction errors). Residuals are a measure of how far from the regression line data points are; RMSE is a measure of how spread out these residuals are. In other words, it tells you how concentrated the data is around the line of best fit.
+
+```{r RMSE2 1}
+sqrt(sum(residuals(mdl)^2)/df.residual(mdl))
+
+```
+###Both the RMSE look very high.
+When the RMSE is spread out and data has higher rmse we have a poor model fit prediction
+Lower rmse closer strong fitted and acual value.
+
+```{r RMSE2}
+sqrt(sum(residuals(modelpract)^2)/df.residual(modelpract))
+
+```
+###The RMSE data seems to say taht Maybe using Linear regression on the data set is not the best model to predict the cost of healthcare.
+
+#Here we will split our Healthcare dataset in to a Training and Testing set to test out our Linear regression model and see if we can train our model and test it to see how accuarte it can predict the cost of healthcare. 
+
+##Spliting Data into train and test set with caTools
+```{r train split}
+library(caTools)
+#set ad seed
+set.seed(101)
+#split up samples
+sample<- sample.split(healthcare$costs, SplitRatio = 0.7)
+#70% of data ->train
+train<- subset(healthcare,sample == TRUE)
+#30% will be test
+test <- subset(healthcare, sample == FALSE)
+
+#model of building linear regression model in R and train
+healthmodel <- lm(costs~., train) # all features
+
+healthmodel2 <- lm(costs ~ .-prev_balance -gender -region, train )
+
+print(summary(healthmodel))
+print(summary(healthmodel2))
+
+```
+###Here we set a seed so the training set and test set can be reproducible. Otherwise it would be random and we can't reproduce the data for practice.
+In a non practice enviromnent you would not set the seed for training/test set. 
+
+##Residual plot to determine the random noise of the model
+```{r residual}
+library(ggplot2)
+library(broom)
+#graph a model for residual test
+res_model <- lm(costs ~ ., healthcare)
+#get observ level info
+model_observe <- augment(res_model)
+#see the result
+model_observe
+
+#using model_observe draw scatter plot of residual vs fitted values
+ggplot(model_observe, aes(x=.fitted, y=.resid))+
+  geom_point()
+
+```
+###Looks like the residuals are not distribued randomly. There is some weird pattern and the correlation not accounted for . So this might be a bad example of a residual distribution. Maybe linear regression is not the best model for this data set to predict the cost of healthcare.
+
+
+```{r augment}
+library(ggplot2)
+library(broom)
+#graph a model for residual test
+#res_model <- augment(lm(costs ~ ., healthcare ))
+#get observ level info
+#model_observe <- augment(res_model)
+#see the result
+model_observe
+
+#using model_observe draw scatter plot of residual vs fitted values
+ggplot(model_observe, aes(x=.fitted, y=.resid))+
+  geom_point()+ geom_hline(yintercept = 0)
+```
+
+###Looks like the residuals are not distribued normally. There is some weird pattern and the correlation not accounted for. So this might be bad example of residual distribution. Maybe linear regression is not the best model for this data set to predict the cost of healthcare. ( there was an issue with running this augment and I commented it out)
+
+##Scatterplot looking at the BMI vs Cost and filtering the outliers with body mass greater than 35
+```{r outliers}
+library(tidyverse)
+# This plot is shown
+p <- ggplot(healthcare, aes(x = body_mass, y = costs)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) 
+
+# Filter to remove the outlier
+healthcareoutlier <- healthcare %>% 
+  filter( body_mass < 30)
+
+p +
+  # Add another smooth lin .reg. layer, no ribbon, 
+  # hypdata_no_outlier data, colored red
+  geom_smooth(
+    method = "lm", se = FALSE, 
+    data = healthcareoutlier, color = "red"
+  )
+```
+
+### The red line shows the linear regression line that is filters out the BMI greater than 30. You can see the slope is still slightly tilted compared to the original line blue line.People who have a BMI under 30 increase in healthcare cost slower compared to before we filtered the outliers out of the equation. This is not alway the best practice. Here we can play around with filtering outlier out of the linear regression model. 
+
+```{r train nrow}
+#how many rows are in the data
+n <- nrow(healthcare)
+n
+```
+```{r train 80 percet}
+#rows
+nrow(healthcare)
+#calculate 80% of the rows
+n_train <- round(0.80 * n)
+n_train
+```
+
+```{r set seed}
+set.seed(123)
+#create an index that is 80% of the data
+train_ind <- sample(1:n, n_train)
+```
+
+```{r taining data}
+#seperate the trian protion 
+health_train <- healthcare[train_ind,]
+```
+
+```{r test data }
+#see if it worked but counting 
+
+#using the "-" sign seperate the test portion 
+health_test <-  healthcare[-train_ind,]
+```
+
+```{r confirm training}
+nrow(health_test)
+
+```
+```{r nrow test + train}
+#add them together to see if it worked 
+nrow(health_test) + nrow(health_train)
+```
+confirmed the test train split worked 
+
+```{r predict cost}
+costs.predictions <- predict(mdl, health_train)
+results  <- c(costs.predictions, health_test$costs)
+results
+names(results) <- c('predicted', 'actual')
+results <- as.data.frame(t(results))
+print(head(results, 40))
+
+```
+###Here is the actual and predicted cost of healthcare cost for the training samples using the linear regression model. 
+It looks like the accuracy is ok but is not the best. We will move on to look at Classification trees model to see if we can make better predictions. 
+
+
+
+```{r mean results vs actuals}
+mse <- mean(((results$actual) - (results$predicted))^2)
+print(mse)
+```
+```{r root mean squares}
+#root mean squared error
+print(mse^0.5)
+```
+
+```{r SSE}
+SSE <- sum((results$actual - results$predicted)^2)
+print(SSE)
+```
+```{r na}
+#are there any NA values 
+any(is.na(healthcare))
+```
+
+```{r data structure}
+#look at structure "str"
+str(healthcare)
+```
+
+
+
+
+```{r correlation data }
+library(ggplot2)
+library(ggthemes)
+library(dplyr)
+library(corrplot)
+library(corrgram)
+num.cols <- sapply(healthcare,is.numeric)
+
+cor.data<- cor(healthcare[,num.cols])
+print(cor.data)
+
+```
+###There shows a small correlation between ages vs costs of healthcare and BMI vs cost of healthcare.
+```{r corplot data}
+print(corrplot(cor.data, method='color'))
+```
+###There shows a small correlation between ages vs costs of healthcare and BMI vs cost of healthcare.
+```{r corrgram healthcare}
+corrgram(healthcare)
+corrgram(healthcare,order=TRUE, lower.panel=panel.shade,
+         upper.panel=panel.pie, text.panel=panel.txt)
+```
+
+```{r ggplot x cost histogram}
+ggplot(healthcare,aes(x=costs)) + geom_histogram(bins=50,alpha=0.5,fill='blue')
+```
+
+```{r mdl residuals}
+res<- residuals(mdl)
+class(res)
+```
+##Calculating the Residual Mean
+```{r mean and residual}
+res<- as.data.frame(res)
+head(res)
+
+mean(healthcare$costs)==mean(fitted.values(mdl))
+mean(residuals(mdl))
+```
+###plot out the residuals:
+good residual the mean=0 
+we want the source of residual to be random 
+we want the predicted to = the actual value 
+```{r ggplot histogram}
+
+ggplot(res,aes(res))+ geom_histogram(fill='blue', alpha=0.5, bins = 40)
+```
+###The residuals are around 0 and spread out. a few residual small peak is on both sides zero. 
+
+```{r mdl summary}
+summary(mdl)
+```
+##############################################################################################
+
+#Classification and Regression Tree model for the Healthcare data set to determine cost of healthcare.
+##Tree model maybe a better model to predict and determine the cost of healthcare.
+### Model interpretability is makes predictions easier in Tree Classification
+### Model performance of trees have superior performance compared to other ML algorithm. 
+```{r body mass healthcare_model class Tree}
+library("rpart")
+library("rpart.plot")
+#look at data 
+str(healthcare)
+
+#create the model
+healthcare_model<- rpart(formula= gender ~ ., 
+                         data=healthcare, 
+                         method= "class")
+
+#Display the results
+rpart.plot(x=healthcare_model, yesno =2, type = 0, extra = 0)
+
+```
+###Cost of Male and female health care in the classification tree. We can follow the tree to determine how each feature effects healthcare price for each individual.
+###Here younger males in north with less then 32 BMI pay less than females.
+
+##Here we look at how smokers effect on the price of healthcare cost.
+```{r smoker healthcare_model class Tree}
+#create the model
+healthcare_model<- rpart(formula= smoker ~ ., 
+                         data=healthcare, 
+                         method= "class")
+
+#Display the results
+rpart.plot(x=healthcare_model, yesno =2, type = 0, extra = 0)
+```
+###Here is a smoker classification Tree. Smokers pay more but have less then 30 BMI
+
+##Here we look at the different region of patients paying for healthcare costs.
+##Here is a classification on region an body mass. 
+```{r region healthcare_model class Tree }
+#create the model
+healthcare_model<- rpart(formula= region ~ ., 
+                         data=healthcare, 
+                         method= "class")
+
+#Display the results
+rpart.plot(x=healthcare_model, yesno =2, type = 0, extra = 0)
+```
+###People in Southeast are the larger in weight and have a BMI greater than 33. Northeast there are a lot of patients who are less than 19 year old. Northwest have patients mostly around 19-20.Northeast and northwest have patients with that are greater or equal to 20 years old. In the Northeast most patients have a BMI less than 24 while Northwest patients have a BMI greater than 24.   
+
+## This Regression tree is looking at the Age of the patients in the model.
+```{r age_yr healthcare_model regression Tree}
+#create the model
+healthcare_model<- rpart(formula= age_yrs ~ ., 
+                         data=healthcare, 
+                         method= "anova")
+
+#Display the results
+rpart.plot(x=healthcare_model, yesno =2, type = 0, extra = 0)
+```
+###Here is a regression tree looking at the age and comparing it to the body mass and cost of health care for each patient. 
+It looks like those who smoke and have large BMI and are older pay more in healthcare cost.
+
+## This Regression tree is looking at the BMI of the patients in the model.
+```{r body mass healthcare_model regression Tree}
+#create the model
+healthcare_model<- rpart(formula= body_mass ~ ., 
+                         data=healthcare, 
+                         method= "anova")
+
+#Display the results
+rpart.plot(x=healthcare_model, yesno =2, type = 0, extra = 0)
+```
+###Smokers have a lower body mass. BMI abive 31 who are smokers pay over 33K in healthcare cost. Patients with BMI over 36 pay 36K in healthcare cost. 
+
+## This Regression tree is looking at the number of children patient's have in the model.
+```{r regression tree no children}
+#create the model
+healthcare_model<- rpart(formula= no_children ~ ., 
+                         data=healthcare, 
+                         method= "anova")
+
+#Display the results
+rpart.plot(x=healthcare_model, yesno =2, type = 0, extra = 0)
+```
+### Here you can follow the tree and determing the cost of healthcare by the number of children you have. 
+
+## This Regression tree is looking at the previous balance of the patients in the model.
+```{r regression tree prev balance}
+#create the model
+healthcare_model<- rpart(formula= prev_balance ~ ., 
+                         data=healthcare, 
+                         method= "anova")
+
+#Display the results
+rpart.plot(x=healthcare_model, yesno =2, type = 0, extra = 0)
+```
+
+
+
+#how many rows are in the data
+```{r nrows for training }
+n <- nrow(healthcare)
+n
+```
+```{r training data }
+#rows
+nrow(health_train)
+#calculate 80% of the rows
+n_train <- round(0.80 * n)
+n_train
+```
+
+```{r set seedthe}
+set.seed(123)
+#create an index that is 80% of the data
+train_ind <- sample(1:n, n_train)
+```
+
+```{r training }
+#seperate the trian protion 
+health_train <- healthcare[train_ind,]
+```
+
+```{r test}
+#see if it worked but counting 
+
+#using the "-" sign seperate the test portion 
+health_test <-  healthcare[-train_ind,]
+```
+
+#Follow down the Tree: 
+handle both numerical and categorical feature input
+can handle missing data elegantly
+robost to outlier
+requires little data preparation 
+can model non linear data
+
+high variance cause model poor performance
+
+
+
+```{r healthcare_coststrain}
+#train the model to predict the  binary response, "costs"
+healthcare_coststrain <- rpart(formula = region ~.,
+                          data=health_train,
+                          method="class")
+rpart.plot(x=healthcare_coststrain, yesno =2, type = 0, extra = 0)
+print(healthcare_coststrain)
+```
+```{r rpart prediction}
+#train the model to predict the  binary response, "costs"
+healthcare_coststrain <- rpart(formula = gender ~.,
+                          data=health_train,
+                          method="class")
+rpart.plot(x=healthcare_coststrain, yesno =2, type = 0, extra = 0)
+print(healthcare_coststrain)
+```
+
+```{r costtrain }
+#train the model to predict the  binary response, "costs"
+healthcare_coststrain <- rpart(formula = smoker ~.,
+                          data=health_train,
+                          method="class")
+rpart.plot(x=healthcare_coststrain, yesno =2, type = 0, extra = 0)
+print(healthcare_coststrain)
+```
+
+Predicting class labels for test data
+```{r class_predict}
+
+class_prediction <- predict(object=healthcare_coststrain,
+                            newdata = health_test,
+                            type = "class")
+
+                                                     
+print(class_prediction)
+```
+
+
+
+
+
+################################################################
+
+#Slit to Training/Testing/Validation with three sets for Regression Tree
+```{r set seed and train test split}
+# Look at the data
+str(healthcare)
+
+# Set seed and create assignment 
+set.seed(1)
+assignment <- sample(1:3, size = nrow(healthcare), prob = c(0.7, 0.15, 0.15), replace = TRUE)
+
+# Create a train, validation and tests from the original data frame 
+costs_train <- healthcare[assignment == 1, ]  # subset grade to training indices only
+costs_valid <- healthcare[assignment == 2, ]  # subset grade to validation indices only
+costs_test <- healthcare[assignment == 3, ]   # subset grade to test indices only
+```
+
+
+#Training with Regression Tree
+```{r cost model}
+# Train the model
+costs_model <- rpart(formula = costs ~ ., 
+                     data = costs_train, 
+                     method = "anova")
+
+# Look at the model output                      
+print(costs_model)
+
+# Plot the tree model
+rpart.plot(x = costs_model, yesno = 2, type = 0, extra = 0)
+```
+
+# Predict the cost for all the people in the test set Evaluate model based on test set RMSE Room Mean Square Error.RMSE tells us approximately how far away our predictions are from the true values
+```{r Predict}
+library(caret)
+# Generate predictions on a test set
+pred <- predict(object = costs_model,  # model object 
+                newdata = costs_test)  # test dataset
+
+# Compute the RMSE
+RMSE <- function(error) { sqrt(mean(error^2)) }
+#RMSE(actual = costs_test$costs, 
+#     predicted = pred)
+```
+
+```{r}
+RMSE <- function(error) { sqrt(mean(error^2)) }
+RMSE(costs_test$costs)
+
+mae <- function(error) { mean(abs(error)) }
+mae(costs_test$costs)
+```
+
+```{r mean results vs actual}
+rmse1 <- mean((costs_test$costs - pred)^2)
+print(rmse1)
+```
+```{r root mean square}
+#root mean squared error
+print(rmse1^0.5)
+```
+
+
+
+
+
+# Tuning model: Tune model using prune() function by finding best 'CP' complexity parameter
+
+```{r CPtable}
+# Plot the "CP Table" matrix of info on optimal pruning
+plotcp(costs_model)
+
+# Print the "CP Table" 
+print(costs_model$cptable)
+
+# Retrieve optimal cp value based on cross-validated error
+opt_index <- which.min(costs_model$cptable[, "xerror"])
+cp_opt <- costs_model$cptable[opt_index, "CP"]
+
+# Prune the model (to optimized cp value) trim off least important splits based on CP
+costs_model_opt <- prune(tree = costs_model, 
+                         cp = cp_opt)
+                          
+# Plot the optimized model
+rpart.plot(x = costs_model_opt, yesno = 2, type = 0, extra = 0)
+```
+###Prune function provides the optimal prunings based on the cp value.
+We prune the tree to avoid any overfitting of the data. The convention is to have a small tree and the one with least cross validated error given by print() function i.e. ‘xerror’.
+Plotcp() provides a graphical representation to the cross validated error summary. The cp values are plotted against the geometric mean to depict the deviation until the minimum value is reached.
+The default value of the cp is .01. In the table is shows that 4 splits will give use the best decision tree and  avoiding any overfitting of the data.
+
+These are the 4 splits the decision tree gave us after using the training model and pruning it shown    in the diagram above. 
+The decision tree after pruning shows that 4 price values. 
+1. Patients who are non smoker, younger than 45 pay around $5531 for healthcare cost.
+2. Patients who are non smoker, older than 45 pay around $13,000 for healthcare cost.
+3. Patients who are smoker, BMI less than 30 pay around $22,000 for healthcare cost.
+4. Patients who are smoker, BMI greater than 30 pay around $42,000 for healthcare cost.
+
+
+# Generate grid of hyperparameter values uinge expand.grid() to generate grid of maxdepth and minsplit values
+```{r mini split hyperparameter}
+# Establish a list of possible values for minsplit and maxdepth
+minsplit <- seq(1, 4, 1)
+maxdepth <- seq(1, 6, 1)
+
+# Create a data frame containing all combinations 
+hyper_grid <- expand.grid(minsplit = minsplit, maxdepth = maxdepth)
+
+# Check out the grid
+head(hyper_grid)
+
+# Print the number of grid combinations
+nrow(hyper_grid)
+```
+
+#Generate grid models
+write look to train grid of models and store models in list 
+```{r generate grid models}
+# Number of potential models in the grid
+num_models <- nrow(hyper_grid)
+
+# Create an empty list to store models
+costs_models1 <- list()
+
+# Write a loop over the rows of hyper_grid to train the grid of models
+for (i in 1:num_models) {
+
+    # Get minsplit, maxdepth values at row i
+    minsplit <- hyper_grid$minsplit[i]
+    maxdepth <- hyper_grid$maxdepth[i]
+
+    # Train a model and store in the list
+    costs_models1[[i]] <- rpart(formula = costs ~ ., 
+                               data = costs_train, 
+                               method = "anova",
+                               minsplit = minsplit,
+                               maxdepth = maxdepth)
+}
+```
+
+#Evaluate the grid
+split healthcare dataset into training, validating and test earlier. Validation set used to evaluate performace of model and used to compare the performace of a group of models with goal of choosing "best model". Once I have best model, final estimate of performance is computed on test set. Test set should only ever be used to estimate model performance and should not be used in model selection. 
+
+
+```{r grid poteinal models}
+library(broom)
+# Number of potential models in the grid
+num_models <- length(costs_models1)
+
+# Create an empty vector to store RMSE values
+rmse_values <- c()
+
+# Write a loop over the models to compute validation RMSE
+for (i in 1:num_models) {
+
+    # Retrieve the i^th model from the list
+    model <- costs_models1[[i]]
+    
+    # Generate predictions on grade_valid 
+    pred <- predict(object = model,
+                    newdata = costs_valid)
+    
+    #Compute validation RMSE and add to the 
+RMSE <- function(error) { sqrt(mean(error^2)) }
+rmse_values[i] <- RMSE(costs_valid$costs) 
+rmse_values[i]                     
+}
+
+# Function for Root Mean Squared Error
+RMSE <- function(error) { sqrt(mean(error^2)) }
+RMSE(costs_valid$costs) 
+RMSE(costs_test$costs)  #RMSE(fit$residuals)
+
+# Function for Mean Absolute Error
+mae <- function(error) { mean(abs(error)) }
+mae(costs_valid$costs)
+mae(costs_test$costs)  
+```
+
+```{r grid poteinal models best_model}
+# Identify the model with smallest validation set RMSE
+best_model <- costs_models1[[which.min(rmse_values)]]
+
+# Print the model paramters of the best model
+best_model$control
+```
+
+```{r grid poteinal models Compute test set RMSE on best_model}
+# Compute test set RMSE on best_model
+pred <- predict(object = best_model,
+              newdata = costs_test)
+RMSE <- function(error) { sqrt(mean(error^2)) }
+
+RMSE_best_model <- RMSE(costs_test$costs)
+RMSE_best_model    
+```
+
+## After the Hyperparameter the best fit model for the Regression tree Predicts that the predicted cost for Healthcare is $3910.80
+
+
+
+
+
+
+*****************Test***************
+```{r mdl2 lm model}
+# R^2 and adjusted R^2
+#summary(mdl)
+
+# add random noise
+healthcare_noisy <- healthcare %>%
+  mutate(noise = rnorm(nrow(healthcare)))
+  
+# compute new model
+mdl2 <- lm(costs ~ body_mass + smoker + age_yrs +no_children +noise, data = healthcare_noisy)
+
+# new R^2 and adjusted R^2
+summary(mdl2)
+```
+
+```{r predict mdl2}
+# return a vector
+predict(mdl2)
+
+# return a data frame
+augment(mdl2)
+```
+
+
+```{r libraries}
+library(tidyverse)
+library(dbplyr)
+library(mlbench)
+#mdl%>% augment()%>%arange(desc(.hat))%>% 
+#  head()
+```
+```{r dim healthcare}
+
+dim(healthcare)
+```
+
+#######################################################################################
+
+
+***  
+  
+# **Problem 2**
+
+Use the [National Health and Nutrition Examination Survey](https://en.wikipedia.org/wiki/National_Health_and_Nutrition_Examination_Survey) dataset **nhanes** (see below) for this problem.  
+
+*  Use the nhanes data to predict the outcome **DIQ010** indicating diabetes diagnosis (yes/no) from the above dataset.  
+*  Prepare your dataset (e.g., to avoid overfitting)  
+*  Fit you logistic regression, random forest, and gbm models to predict DIQ010  
+*  Tune your models to optimize performance    
+*  Show and *explain* your results, use plots where appropriate  
+*  Evaluate comparative model performance  
+*  State your conclusions  
+
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+#  Do not change the code in this chunk!
+nhanes <- read_csv('nhanes.csv')
+```
+
+Diabetes data set
+```{r Diabetes}
+library(mlbench)
+data("nhanes")
+glimpse(nhanes)
+
+```
+
+
+```{r GLM}
+nhanes <- read_csv('nhanes.csv')
+
+nhanes$DIQ010 <- ifelse(nhanes$DIQ010=='Yes', 1,0)
+nhanes
+nhanesmodel <- glm(DIQ010~., data=nhanes, family ='binomial')
+
+summary(nhanesmodel)
+
+augment(nhanesmodel)
+augment(nhanesmodel,type.predict="response")
+
+```
+1. Logistic regression problem first try at it.
+2. Changed the DIQ010 value from yes/no to O and 1
+3. Looked at the data set and wrote a logistic regression model and ran a prediction on it.
+4. Star values are the significant low pvalues. 
+5. look at .fitted, .se.fit, .resid, .hat, .sigma, .cooksd, .std.resid
+
+
+augment shows fitted values on log odd scale not useful set type.predict = response retrial familar probablity scale
+probablility of diabetes is limited
+make prediction not in our data set
+need out of sample predictions
+need to use new data to augment. 
+```{r augment data }
+# create new data frame
+new_data <- data.frame(LBXGH = 5.0)
+
+# make predictions
+augment(nhanesmodel, newdata = new_data, type.predict = "response")
+```
+
+```{r coef}
+exp(coef(nhanesmodel ))
+
+
+```
+
+Patient who drink high amounts of alcohol, caffeine, carbs, cholesterol, protein, sodium, sugar, fats, have high BMI, 60 sec pulse
+, systolic, creatinine, glucose serum, total protein, triglycerides, cholesterol, glycohemoglobin, sodium,osmolality, SLQ050,over and under weight
+
+```{r confusion matrix all feature}
+# data frame with binary predictions
+tidy_mod <- augment(nhanesmodel, type.predict = "response") %>% 
+  mutate(DIQ010_hat = round(.fitted)) 
+  
+# confusion matrix
+tidy_mod %>% 
+  select(DIQ010, DIQ010_hat) %>%
+  table()
+```
+With the confusion matrix we see 226636 was true negatives and 373 false positives
+1517 false negative and 1666 was true positive 
+
+```{r augment set}
+library(broom)
+# Use broom::augment to augment the model  
+aug_nhanesmodel <- augment(nhanesmodel) 
+glimpse(aug_nhanesmodel)
+```
+The augment() function from the broom package does exactly this. It takes a model object as an argument and returns a data frame that contains the data on which the model was fit, along with several quantities specific to the regression model, including the fitted values, residuals, leverage scores, and standardized residuals.
+
+RMSE if it is spread out data Higher rmse poor model fit prediction
+Lower rmse closer strong fitted and acual value
+
+
+
+
+```{r Glycohemoglobin best fit model}
+# scatterplot with jitter
+data_nhanes <- ggplot(data = nhanes, aes(y = DIQ010, x = LBXGH)) + 
+  geom_jitter(width = 0, height = 0.05, alpha = 0.5)
+
+# linear regression line for the scatter plot
+data_nhanes + 
+  geom_smooth(method = "lm", se = FALSE)
+#checking high LBXGH values above 6.5
+glycohemoglobin <- nhanes %>%
+  filter( LBXGH >= 6.5, LBXGH <= 10)
+
+# scatterplot with jitter
+data_glycohemoglobin <- ggplot(data = glycohemoglobin, aes(y = DIQ010, x = LBXGH)) + 
+  geom_jitter(width = 0, height = 0.05, alpha = 0.5)
+
+# linear regression line
+data_glycohemoglobin + 
+ geom_smooth(method = "lm", se = FALSE)
+
+#check with lower LBXGH values
+lowglycohemoglobin <- nhanes %>%
+  filter( LBXGH >= 4, LBXGH <= 6.5)
+
+# scatterplot with jitter
+low_glycohemoglobin <- ggplot(data = lowglycohemoglobin , aes(y = DIQ010, x = LBXGH)) + 
+  geom_jitter(width = 0, height = 0.05, alpha = 0.5)
+
+# linear regression line
+low_glycohemoglobin + 
+ geom_smooth(method = "lm", se = FALSE)
+
+
+# fit model
+Glycohemoglobin_model <- glm(DIQ010 ~ LBXGH, data = nhanes, family = binomial)
+summary(Glycohemoglobin_model)
+glimpse(Glycohemoglobin_model)
+
+# create new data frame
+new_data <- data.frame(LBXGH = 8.0)
+
+# make predictions
+augment(Glycohemoglobin_model, newdata = new_data, type.predict = "response")
+
+ggplot(Glycohemoglobin_model, aes(x = .fitted)) +
+  geom_density(aes(color = as.factor(LBXGH)))
+
+ggplot(Glycohemoglobin_model, aes(x = .fitted)) +
+  geom_density(aes(color = as.factor(DIQ010)))
+```
+1.This is a scatterplot of DIQ010 (if you have diabetes ) vs the LBXGH = Glycohemoglobin (%) levels.
+2.Glycohemoglobin values above 6.5% is when the doctor tells you are pre diabetics.
+3.Second graph the Glycohemoglobin % is filtered with the linear regression line is where the glycohemoglobin % is 6.5 and above.  
+4. Third graph is showing patient with Glycohemoglobin % between 4-6.5. These people do not have diabetes. 
+5. This is the best fit model for predicting diabetes using Glycohemoglobin % results. If a patient has below 6.4 glycohemoglobin they have under 50% chance to not have diabetes and if they are above 6.4 % glycohemoglobin they will have a 50% chance to have diabetes. 
+6. Below is a graph that shows #5's prediction. 
+
+
+```{r confusion matrix glycohemoglobin}
+# data frame with binary predictions
+tidy_mod <- augment(Glycohemoglobin_model, type.predict = "response") %>% 
+  mutate(DIQ010_hat = round(.fitted)) 
+  
+# confusion matrix
+tidy_mod %>% 
+  select(DIQ010, DIQ010_hat) %>%
+  table()
+```
+
+
+```{r logistic regression LBXGH glycohemoglobin}
+# scatterplot with jitter
+log_nhanes <- ggplot(data = nhanes, aes(y = DIQ010, x = LBXGH)) + 
+  geom_jitter(width = 0, height = 0.05, alpha = 0.5)
+
+# add logistic curve
+log_nhanes +
+  geom_smooth(method = "glm", se = FALSE, method.args = list(family = "binomial"))
+```
+1. Here is the logistic regression graph for the DIQ010 vs LBXGH variables for the nhanes dataset. Here the logistic regression line fits very nicely on the data. 
+2. Logistic regression is a type of Generalized Linear Model which is suitable for problems that predict a binary outcome (e.g., 1/0 or positive/negative), a classification model
+3. We don't use the linear regression because the probabilities are always between 0 and 1; OLSR models can generate outcomes that are constrained to values between 0 and 1.
+4. A logistic function or logistic curve is a common “S” shape (sigmoid curve), with equation:
+5. where
+    e = the natural logarithm base
+    Xo= the x-value of the sigmoid’s midpoint,
+    L is the curve’s maximum value, in this case, L = 1
+    k = the steepness of the curve
+```{r bin points and  lines}
+# binned points and line
+data_space <- ggplot(data = nhanes, aes(x = LBXGH, y = DIQ010)) + 
+  geom_point() + geom_line()
+
+# augmented model
+MedGPA_plus <- nhanesmodel %>%
+  augment(type.predict = "response")
+
+# logistic model on probability scale
+data_space +
+  geom_line(data = MedGPA_plus, aes(x = DIQ010, y = .fitted), color = "red")
+
+```
+
+
+
+```{r offd og bind}
+# compute odds for bins
+# compute odds for bins
+nhanes <- nhanes%>%
+  mutate(odds = LBXGH / (1 - LBXGH))
+
+# plot binned odds
+data_space <- ggplot(data = nhanes, aes(x = LBXGH, y = DIQ010)) + 
+  geom_point() + geom_line()
+
+# compute odds for observations
+MedGPA_plus <- MedGPA_plus %>%
+  mutate(odds_hat = .fitted / (1 - .fitted))
+
+# logistic model on odds scale
+data_space +
+  geom_line(data = MedGPA_plus, aes(x = LBXGH, y = DIQ010), color = "red")
+```
+
+```{r log graph}
+# compute log odds for bins
+nhanes <- nhanes %>%
+  mutate(log_odds = log(LBXGH / (1 - LBXGH)))
+
+# plot binned log odds
+data_space <- ggplot(data =nhanes, aes(x = LBXGH, y = DIQ010)) + 
+  geom_point() + geom_line()
+
+# compute log odds for observations
+MedGPA_plus <- MedGPA_plus %>%
+  mutate(log_DIQ010 = log(.fitted / (1 - .fitted)))
+
+# logistic model on log odds scale
+data_space +
+  geom_line(data = MedGPA_plus, aes(x = LBXGH, y = log_DIQ010), color = "red")
+```
+
+
+
+```{r log reg DR1TSUGR total sugar}
+# scatterplot with jitter
+log_nhanes <- ggplot(data = nhanes, aes(y = DIQ010, x = DR1TSUGR)) + 
+  geom_jitter(width = 0, height = 0.05, alpha = 0.5)
+
+# add logistic curve
+log_nhanes +
+  geom_smooth(method = "glm", se = FALSE, method.args = list(family = "binomial"))
+```
+
+```{r BMXBMI Body mass }
+# scatterplot with jitter
+log_nhanes <- ggplot(data = nhanes, aes(y = DIQ010, x = BMXBMI)) + 
+  geom_jitter(width = 0, height = 0.05, alpha = 0.5)
+
+# add logistic curve
+log_nhanes +
+  geom_smooth(method = "glm", se = FALSE, method.args = list(family = "binomial"))
+```
+
+```{r LBDSGLSI glucose serum}
+# scatterplot with jitter
+log_nhanes <- ggplot(data = nhanes, aes(y = DIQ010, x = LBDSGLSI)) + 
+  geom_jitter(width = 0, height = 0.05, alpha = 0.5)
+
+# add logistic curve
+log_nhanes +
+  geom_smooth(method = "glm", se = FALSE, method.args = list(family = "binomial"))
+
+Glucoseserum_model <- glm(DIQ010 ~ LBDSGLSI, data = nhanes, family = binomial)
+summary(Glucoseserum_model)
+#glimpse(Glucoseserum_model)
+```
+1. Interesting there was no * for this LBDSGSI in the first logistic regression were we compare all the features. 
+2. Serum glucose levels here shows it is correlated to having diabetes or not with 3*** 
+
+```{r creatinine}
+# scatterplot with jitter
+log_nhanes <- ggplot(data = nhanes, aes(y = DIQ010, x = LBDSCRSI)) + 
+  geom_jitter(width = 0, height = 0.05, alpha = 0.5)
+
+# add logistic curve
+log_nhanes +
+  geom_smooth(method = "glm", se = FALSE, method.args = list(family = "binomial"))
+
+Creatinine_model <- glm(DIQ010 ~ LBDSCRSI, data = nhanes, family = binomial)
+summary(Creatinine_model)
+```
+
+```{r protein}
+# scatterplot with jitter
+log_nhanes <- ggplot(data = nhanes, aes(y = DIQ010, x = BPXDI1)) + 
+  geom_jitter(width = 0, height = 0.05, alpha = 0.5)
+
+# add logistic curve
+log_nhanes  +
+  geom_smooth(method = "glm", se = FALSE, method.args = list(family = "binomial"))
+
+Protein_model <- glm(DIQ010 ~ BPXDI1, data = nhanes, family = binomial)
+summary(Protein_model)
+```
+```{r cholesterol}
+# scatterplot with jitter
+log_nhanes <- ggplot(data = nhanes, aes(y = DIQ010, x = LBDSCHSI)) + 
+  geom_jitter(width = 0, height = 0.05, alpha = 0.5)
+
+# add logistic curve
+log_nhanes  +
+  geom_smooth(method = "glm", se = FALSE, method.args = list(family = "binomial"))
+
+Cholesterol_model <- glm(DIQ010 ~ LBDSCHSI, data = nhanes, family = binomial)
+summary(Cholesterol_model)
+```
+
+
+```{r augment model}
+library(broom)
+# Use broom::augment to augment the model  
+aug_nhanesmodel <- augment(nhanesmodel) 
+glimpse(aug_nhanesmodel)
+```
+
+
+```{r nhanes tible}
+# Load the dplyr package
+library(dplyr)
+# Convert the hflights data.frame into a hflights tbl
+nhanes1 <- as_tibble(nhanes)
+head(nhanes1)
+```
+# glycohemoglobin % above 6.5 your prediabetic 
+```{r histogram LBXGH }
+
+ggplot(nhanes, aes(x= LBXGH )) + geom_histogram(bins=100,alpha=0.5,fill='blue')
+#post people in nhanes have diabetes
+```
+
+```{r histogram LBDSGLSI}
+#this is blood glucose level mmol/L 
+ggplot(nhanes, aes(x= LBDSGLSI )) + geom_histogram(bins=100,alpha=0.5,fill='blue')
+#post people in nhanes have normal to high glucose serum level. normal glucose serum level is at 5.6 mmol/L
+```
+
+```{r ggplot bmxbmi histogram}
+#this is bodymass index level normal is 23-25
+ggplot(nhanes, aes(x= BMXBMI   )) + geom_histogram(bins=50,alpha=0.5,fill='blue')
+#post people in nhanes have normal to high glucose bodymass level.
+```
+
+```{r ggplot lbxgh diq010 plot}
+pl <-ggplot(nhanes,aes(x=LBXGH , y=DIQ010))
+pl2 <- pl+ geom_point(aes(color=DR1TSUGR),size=2)
+pl3 <- pl2 + scale_color_gradient(low='blue',high='red')+ geom_jitter( alpha = 0.2)
+print(pl3)
+```
+
+
+
+
+```{r nhanes read nhanesshort modelnhanes summary coef}
+#library(ISLR)
+nhanes <- read_csv('nhanes.csv')
+
+nhanes$DIQ010 <- ifelse(nhanes$DIQ010=='Yes', 1,0)
+nhanes
+nhanesshort <- select(nhanes, DIQ010,LBXGH, INDFMPIR,INDFMPIR,RIDAGEYR,DR1TCAFF,DR1TFIBE, 
+DR1TSODI,DR1TSUGR,BMXBMI,BPXDI1,BPXPLS,LBDSCHSI,LBDSCRSI,LBDSTRSI,LBXGH,LBXSAPSI
+)
+nhanesshort
+
+modelnhanes <- glm(DIQ010 ~ ., data=nhanesshort, family = binomial )
+
+summary(modelnhanes)
+coef(modelnhanes)
+```
+
+
+```{r sample row }
+
+
+
+smp_size <- floor(0.75 * nrow(nhanes))
+
+print(smp_size)
+```
+```{r set seed traing samples train test set}
+set.seed(123)
+train_ind <- sample(seq_len(nrow(nhanes)), size = smp_size)
+train <- nhanes[train_ind, ]
+test <- nhanes[-train_ind, ]
+```
+
+```{r glimpse nhanes}
+glimpse(nhanes)
+```
+
+```{r nhanes table DIQ010}
+diabetes <-table(nhanes$DIQ010)
+diabetes
+```
+
+```{r round table}
+round(prop.table(table(nhanes$DIQ010)), 2)
+```
+
+```{r head}
+head(nhanes)
+```
+
+
+
+
+
+
+#Train Test split
+```{r nrow nhanes set data}
+n <- nrow(nhanes)
+n
+```
+
+```{r nrows nhanes 80 20}
+#rows
+nrow(nhanes)
+#calculate 80% of the rows
+n_train <- round(0.80 * n)
+n_train
+```
+
+```{r set the seed }
+set.seed(123)
+#create an index that is 80% of the data
+train_ind <- sample(1:n, n_train)
+```
+
+```{r a nhanes train set}
+#seperate the trian protion 
+nhanes_train <- nhanes[train_ind,]
+```
+
+```{r a test set}
+#see if it worked but counting 
+
+#using the "-" sign seperate the test portion 
+nhanes_test <-  nhanes[-train_ind,]
+```
+
+
+
+
+
+```{r mdlnhanes glm}
+mdlnhanes <- glm(DIQ010~ ., data = nhanes, family = 'binomial')
+summary(mdlnhanes)
+```
+```{r}
+library(tidyverse)
+#nhanes_df <- read_csv('nhanes.csv') %>% 
+ # mutate(odds = nhanes/(1 - nhanes),
+  #      log_odds = log(odds)
+   #   )
+#glimpse(nhanes_df)
+```
+##############################
+#Random Forest
+
+```{r nhanes and nhanesshort ifelse traing test}
+#  Do not change the code in this chunk!
+nhanes <- read_csv('nhanes.csv')
+
+nhanes$DIQ010 <- ifelse(nhanes$DIQ010=='Yes', 1,0)
+nhanes
+nhanesshort <- select(nhanes, DIQ010,LBXGH, INDFMPIR,INDFMPIR,RIDAGEYR,DR1TCAFF,DR1TFIBE, 
+DR1TSODI,DR1TSUGR,BMXBMI,BPXDI1,BPXPLS,LBDSCHSI,LBDSCRSI,LBDSTRSI,LBXGH,LBXSAPSI
+)
+nhanesshort
+
+# Total number of rows in the credit data frame
+n <- nrow(nhanesshort)
+
+# Number of rows for the training set (80% of the dataset)
+n_train <- round(0.8 * n) 
+
+# Create a vector of indices which is an 80% random sample
+set.seed(123)
+train_nhanes <- sample(1:n, n_train)
+
+# Subset the credit data frame to training indices only
+nhanes_train <- nhanesshort[train_nhanes, ]  
+  
+# Exclude the training indices to create the test set
+nhanes_test <- nhanesshort[-train_nhanes, ]  
+```
+```{r rpart predict}
+library(rpart)
+library(rpart.plot)
+tree<-rpart(DIQ010~., method="class",data=nhanes)
+printcp(tree)
+plot(tree,uniform = T,main="nhanes Tree")
+text(tree,use.n=T,all=T)
+prp(tree)
+tree<-rpart(DIQ010~., method="class",data=nhanes_train)
+tree.preds<-predict(tree,nhanes_test)
+head(tree.preds)
+#train model
+tree<-rpart(DIQ010~., method="class",data=nhanes_train)
+tree.preds<-predict(tree,nhanes_test)
+tree.pred<-as.data.frame(tree.preds)
+joiner<- function(x){
+  if(x>=0.5){
+    return('Yes')
+  }else{
+    return('No')
+  }
+}
+tree.preds$DIQ010 <- sapply(tree.pred$Yes,joiner)
+
+print(head(tree.preds))
+table(tree.preds$DIQ010,tree.pred$DIQ010)
+
+```
+```{r rfn model 1}
+library(randomForest)
+library(dplyr)
+#nhanesshort$DIQ010 <- ifelse(nhanesshort$DIQ010=='Yes', 1,0)
+nhanesshort
+#data_fac=nhanesshort %>% mutate_if(is.character, as.factor)
+#data_fac
+
+rfn.model<-randomForest(DIQ010~., data=nhanesshort)
+print(rfn.model)
+rfn.model$confusion
+rfn.model$importance
+```
+```{r Predict rf}
+#rfn.preds<-predict(rfn.model,nhanes_test)
+#table(rfn.preds,nhanes_test$DIQ010)
+```
+
+```{r fmodel ranger}
+library(ranger)
+library(caret)
+library(mlbench)
+
+f_model <- train(
+  DIQ010 ~ .,
+  tuneLength = 3,
+  data = nhanes_train, method = "ranger",
+  trControl = trainControl(method = "cv", number = 10, verboseIter = TRUE)
+)
+```
+#Train Test split
+```{r nrows nhanesshors}
+library(tidyverse)
+glimpse(nhanes)
+n <- nrow(nhanesshort)
+n
+```
+
+```{r nhanes nrow}
+#rows
+nrow(nhanesshort)
+#calculate 80% of the rows
+n_train <- round(0.80 * n)
+n_train
+```
+
+```{r nhanes set seed 123}
+set.seed(123)
+#create an index that is 80% of the data
+train_ind <- sample(1:n, n_train)
+```
+
+```{r nhanes traing set}
+#seperate the trian protion 
+nhanes_train <- nhanesshort[train_ind,]
+```
+
+```{r nhanes test}
+#see if it worked but counting 
+
+#using the "-" sign seperate the test portion 
+nhanes_test <-  nhanesshort[-train_ind,]
+```
+
+
+
+
+
+```{r mdlnhanes model}
+mdlnhanes <- glm(DIQ010~ ., data = nhanes, family = 'binomial')
+summary(mdlnhanes)
+```
+
+##########################################################################
+#Random Forest model 
+The idea in random forests is to improve the variance reduction of bagging by reducing the correlation between the trees, without increasing the variance too much. This is achieved in the tree-growing process through random selection of the input variables.This method will have no incremental increase in bias due to this model.
+```{r 2nd rf}
+library(randomForest)
+library(caTools)
+library(rpart)
+#library(caret)
+#library(CART)
+#train a default RF model (500 trees)
+#modelsRF <- randomForest(formula=DIQ010~., data = nhanes)
+modelsRF<-randomForest(LBXGH~.,
+        data=nhanes_train,
+        importance=TRUE,
+        prOximity=TRUE)
+# Train a Random Forest
+#set.seed(1)  # for reproducibility
+#modelsRF <- randomForest(formula =LBXGH ~ ., data = nhanes_train)
+                             
+# Print the model output                             
+print(modelsRF)
+
+```
+
+```{r}
+str(nhanes)
+```
+
+
+```{r}
+#nhanesDIQ010<- ifelse(nhanes$DIQ010=="yes",1,0)
+#nhanes
+```
+
+```{r Randomforest model work}
+# Train a Random Forest
+#set.seed(1)  # for reproducibility
+#credit_model <- randomForest(formula = DIQ010 ~ ., 
+#                             data = nhanes_train)
+library(ranger)
+rf <- ranger(LBXGH ~ ., data = nhanes_train, num.trees = 50, write.forest = TRUE)
+getTerminalNodeIDs(rf, nhanes_train)
+#getTerminalNodeIDs(rf_model, nhanes)                             
+# Print the model output                             
+print(rf)
+#plot(rf)
+```
+
+```{r err rate}
+# Grab OOB error matrix & take a look
+err <- nhanes_train$err.rate
+head(err)
+
+# Look at final OOB error rate (last row in err matrix)
+oob_err <- err[nrow(err), "OOB"]
+print(oob_err)
+
+# Plot the model trained in the previous exercise
+plot(nhanes_train)
+
+# Add a legend since it doesn't have one by default
+#legend(x = "right", 
+ #      legend = colnames(err),
+ #      fill = 1:ncol(err))
+```
+
+```{r oob err}
+#oob.times(nhanes_train.forest)
+```
+
+Generate prediction model
+
+```{r model predict}
+library(lattice)
+library(caret)
+# Generate predicted classes using the model object
+class_prediction <- predict(object = rfn.model,   # model object 
+                            newdata = nhanes_test,  # test dataset
+                            type = "class") # return classification labels
+                            
+# Calculate the confusion matrix for the test set
+#cm <- confusionMatrix(data=class_prediction,       # predicted classes
+#                      reference= nhanes_test$DIQ010) # actual classes
+#print(cm)
+
+# Compare test set accuracy to OOB accuracy
+#paste0("Test Accuracy: ", cm$overall[1])
+paste0("OOB Accuracy: ", 1 - oob_err)
+
+```
+```{r auc}
+# Generate predictions on the test set
+pred <- predict(object = rfn.model,
+            newdata = nhanes_test,
+            type ="class")
+
+#`pred` is a matrix
+class(pred)
+                
+#Look at the pred format
+head(pred)                
+                
+# Compute the AUC (`actual` must be a binary 1/0 numeric vector)
+#auc(actual = nhanes_test$DIQ010, 
+#   predicted = pred[,"yes"])                
+
+```
+
+```{r cp table}
+library(rpart)
+#Plot the "CP Table"
+#plotcp(rfn.model)
+
+# Print the "CP Table"
+#print(modelsRF$cptable)
+
+# Retrieve optimal cp value based on cross-validated error
+#opt_index <- which.min(modelsRF$cptable[, "xerror"])
+#cp_opt <- modelsRF$cptable[opt_index, "CP"]
+
+# Prune the model (to optimized cp value)
+#modelsRF_opt <- prune(tree = modelsRF, 
+ #                        cp = cp_opt)
+                          
+# Plot the optimized model
+#rpart.plot(x = modelsRF_opt, yesno = 2, type = 0, extra = 0)
+```
+
+```{r mtry}
+# Execute the tuning process
+set.seed(1)              
+res <- tuneRF(x = subset(nhanes_train, select = -DIQ010),
+              y = nhanes_train$DIQ010,
+              ntreeTry = 500)
+               
+# Look at results
+print(res)
+
+# Find the mtry value that minimizes OOB Error
+mtry_opt <- res[,"mtry"][which.min(res[,"OOBError"])]
+print(mtry_opt)
+
+# If you just want to return the best RF model (rather than results)
+# you can set `doBest = TRUE` in `tuneRF()` to return the best RF model
+# instead of a set performance matrix.
+```
+
+```{r mtry2 }
+# Establish a list of possible values for mtry, nodesize and sampsize
+#mtry <- seq(4, ncol(nhanes_train) * 0.8, 2)
+#nodesize <- seq(3, 8, 2)
+#sampsize <- nrow(nhanes_train) * c(0.7, 0.8)
+
+# Create a data frame containing all combinations 
+
+#hyper_grid <- expand.grid(mtry = mtry, nodesize = nodesize, sampsize = sampsize)
+
+# Create an empty vector to store OOB error values
+#oob_err <- c()
+
+# Write a loop over the rows of hyper_grid to train the grid of models
+#for (i in 1:nrow(hyper_grid)) {
+
+    # Train a Random Forest model
+#    model <- randomForest(formula = DIQ010 ~ ., 
+#                          data = nhanes_train,
+#                          mtry = hyper_grid$mtry[i],
+#                          nodesize = hyper_grid$nodesize[i],
+#                          sampsize = hyper_grid$sampsize[i])
+                          
+    # Store OOB error for the model                      
+#    oob_err[i] <- model$err.rate[nrow(model$err.rate), "OOB"]
+#}
+
+# Identify optimal set of hyperparmeters based on OOB error
+#opt_i <- which.min(oob_err)
+#print(hyper_grid[opt_i,])
+```
+
+This mtry took too long to run so I commented it out. 
+
+```{r na is..}
+#are there any NA values 
+any(is.na(nhanes))
+
+#mean(rf) # returns NA
+#mean(rf, na.rm=TRUE) # returns 2
+```
+
+
+*******************
+## Random forest Visualization
+
+
+
+```{r predict nhanesshort.forest}
+print(rfn.model)
+```
+```{r round predict nhanesshort}
+nhanesshort
+#(rfn.model$oob.times)
+#round(rfn.model$importance,2)
+#(rfn.model$err.rate)
+#(rfn.model$confusion)
+#(rfn.model$mtry)    
+#round(rfn.model$predicted,2)
+```
+1. mtry you get 4..Number of variables available for splitting at each tree node.  mtry had a strong influence on predictor variable importance estimates.randomForest - For classification models, the default is the square root of the number of predictor variables (rounded down)
+
+2. Importanice:
+    a. The first measure is computed from permuting OOB data: For each tree, the prediction error on the out-of-bag portion of the data is recorded (error rate for classification, MSE for regression) 
+    b.The second measure is the total decrease in node impurities from splitting on the variable, averaged over all trees. For classification, the node impurity is measured by the Gini index. For regression, it is measured by residual sum of squares.
+3. OOB out of bag. bag is part of training set that went into creating the decision tree.OOB estimate is based on testing the forest on data not included in bag. 
+4. predicted: 
+
+```{r ggVarIMP}
+plot(rfn.model,col="black")
+
+library(ggplot2)
+library(rattle)
+ggVarImp(rfn.model)
+```
+Here are some graphs that visually display the data. As you can see LBXGH the glyhemoglobin is the most import variable to predict if a patient has diabestes. 
+Aslo as we use more random forest tress we get a lower error
+```{r  rf.predss}
+rf.predss<-predict(rfn.model,nhanes_test)
+#table(rf.predss,nhanes_test$LBXGH)
+```
+
+##########################################################################
+
+# Gradient Boosting Machine (GBM) algorithm
+GBM = is simlar to  Adaboost model (1-7 explaination ) with a few changes. GBM = Gradient Descent + Boosting
+Adaboost model
+1. Train decision tree where each observation is assigned an equal weight.
+2. After evaluateing first tree we increase the weight of the observation that are difficult to classify and lower weights of observation that are easy to classify.
+3. Second tree is grown on weighted data. We want to improve the prediction of the first tree. 
+4. New model is now Tree 1 + Tree 2
+5. Then we compute the classification error from this new 2nd tree ensemble model and grow a 3rd tree to predict the revised residuals. 
+6. Then we will repeat this process for a specified number of iterations.
+7. Subsequent trees help in classifying observation that are not well classified by the preceding trees. 
+8. The prediction for the final GBM ensemble model is a weighted sum of the predictions made by previous tree models. 
+
+How Gradient Boosting Machine works:
+1. Gradient boosting identifies the " shortcommings"" of weak learners by 
+gradients in the loss function instead of the high weights used in adaboost.
+2. Both high-weight data points and gradients tell us how to improve our model. 
+3. GBM if tuned properly the performance is often better than other tree based algorithms. 
+```{r repeat a training }
+library(tidyverse)
+#  Do not change the code in this chunk!
+nhanes <- read_csv('nhanes.csv')
+
+nhanes$DIQ010 <- ifelse(nhanes$DIQ010=='Yes', 1,0)
+nhanes
+
+nhanesshort <- select(nhanes, DIQ010,LBXGH, INDFMPIR,INDFMPIR,RIDAGEYR,DR1TCAFF,DR1TFIBE, 
+DR1TSODI,DR1TSUGR,BMXBMI,BPXDI1,BPXPLS,LBDSCHSI,LBDSCRSI,LBDSTRSI,LBXGH,LBXSAPSI
+)
+nhanesshort
+
+# Total number of rows in the credit data frame
+n <- nrow(nhanesshort)
+
+# Number of rows for the training set (80% of the dataset)
+n_train <- round(0.8 * n) 
+
+# Create a vector of indices which is an 80% random sample
+set.seed(123)
+train_nhanes <- sample(1:n, n_train)
+
+# Subset the credit data frame to training indices only
+nhanes_train <- nhanesshort[train_nhanes, ]  
+  
+# Exclude the training indices to create the test set
+nhanes_test <- nhanesshort[-train_nhanes, ]  
+```
+
+
+
+```{r gbm model}
+library(gbm)
+set.seed(1)
+gbm_model <- gbm(formula = DIQ010 ~ ., 
+                    distribution = "gaussian", 
+                    data = nhanes_train,
+                    # data = credit_train,
+                    n.trees = 1000)
+                    
+# Print the model object                    
+print(gbm_model) 
+summary(gbm_model)
+```
+1. The above Boosted Machine is a Gradient Boosted Machine which generates 10000 trees and the shrinkage parameter lambda=0.01 which is also a sort of learning rate. 
+2. Next parameter is the interaction depth d which is the total splits we want to do.So here each tree is a small tree with only 4 splits.
+3. The summary of the model gives a list of feature importance plot.
+4. In the above list, the top is the most important variable and the last  item listed is the least important variable.
+5.The 2 most important features which explain the maximum variance in the Data set is RIDAGEYR(age of patient) ,LBDSTRSI (Triglyceride levels), INDFMRIR(Poverty income ratio ).
+
+
+```{r nhanes gbm}
+nhanesgbm<-gbm(DIQ010 ~ . ,data = nhanes_train,distribution = "gaussian",n.trees = 1000,
+                  shrinkage = 0.01, interaction.depth = 4)
+nhanesgbm
+
+summary(nhanesgbm) #Summary gives a table of Variable Importance and a plot of Variable Importance
+
+```
+
+1. The above Boosted Model is a Gradient Boosted Model which generates 10000 trees and the shrinkage parameter lambda=0.01 which is also a sort of learning rate. 
+2. Next parameter is the interaction depth d which is the total splits we want to do.So here each tree is a small tree with only 4 splits.
+3. The summary of the Model gives a feature importance plot.In the above list is on the top is the most important variable and at last is the least important variable.
+3.The 2 most important features which explain the maximum variance in the Data set is RIDAGEYR(age of patient) ,DRITCAFF (caffeine intake), BPXPLS(60 sec pulse ).
+4. In the Summary table the Rel. inf is the relavant influence number for each variable.This number measure and quantifies how useful certain variables were in the training model. 
+
+
+```{r gbm rmse}
+pred <- predict(object = gbm_model,  
+                newdata = nhanes_test, n.trees = 1000)  
+
+gbm_rmse <- sqrt(mean((pred - nhanes_test$DIQ010) ^ 2))
+gbm_rmse
+```
+1.  Here the predict function is being used. When using the predict function you need to specify how many trees you need.
+2. Here I used the same numbers of trees as the gbm model 1000 but this might not be the optimal number to be used in the predict function. 
+
+
+```{r gmb training}
+#set.seed(4933)
+
+#nhanescontrol <- round(method = 'cv', number = 5, summaryFunction=defaultSummary)
+#train_grid <- expand.grid( n.trees = seq(50,1000,50), interaction.depth = c(30), shrinkage = c(0.1), n.minobsinnode = 10)
+
+#gbm_model3 <- train(DIQ010 ~ ., data=nhanesshort, method = 'gbm', trControl=train_control,tuneGrid=train_grid,metric='RMSE',maximize=FALSE)
+```
+
+```{r}
+
+# Train a 10000-tree GBM model
+set.seed(1)
+credit_model <- gbm(formula = DIQ010 ~., 
+                    distribution = "bernoulli", 
+                    data = nhanes_train,
+                    n.trees = 100)
+                    
+# Print the model object                    
+print(credit_model) 
+
+# summary() prints variable importance
+summary(credit_model) 
+```
+
+
+
+```{r gbmplot}
+library(gbm)
+cor(nhanesshort$DIQ010,nhanesshort$BPXPLS)#negetive correlation coeff-r
+
+cor(nhanesshort$DIQ010,nhanesshort$LBXGH)#positive correlation coeff-r
+```
+Here you can see that BPXPLS variable has a negative correlation with 3% correlation with with having Diabetes.
+While LBXGH the value of glycohemoglobin % has a positive correlation with 58% correlation with having Diabetes
+
+```{r}
+#Plot of Response variable with lstat variable
+plot(gbm_model,i="BPXPLS") 
+#Inverse relation with lstat variable
+
+plot(gbm_model,i="LBXGH") 
+#as the average number of rooms increases the the price increases
+```
+AT LBXGH 6.5% above we get a positive correlation to Diabetes.
+At BPXPLS around 45 we get a negative correlation to Diabetes.
+
+```{r ntress}
+n.trees = seq(from=10 ,to=10000, by=100) #no of trees-a vector of 100 values 
+
+#Generating a Prediction matrix for each Tree
+predmatrix<-predict(gbm_model,nhanes_train,n.trees = n.trees)
+dim(predmatrix) #dimentions of the Prediction Matrix
+```
+
+```{r}
+#Calculating The Mean squared Test Error
+test.error<-with(nhanes,apply( (predmatrix-DIQ010)^2,2,mean))
+head(test.error) #contains the Mean squared test error for each of the 100 trees averaged
+```
+
+```{r ntree plot}
+#Calculating The Mean squared Test Error
+test.error<-with(nhanes,apply( (predmatrix-DIQ010)^2,2,mean))
+head(test.error) #contains the Mean squared test error for each of the 100 trees averaged
+
+#Plotting the test error vs number of trees
+
+plot(n.trees , test.error , pch=19,col="blue",xlab="Number of Trees",ylab="Test Error", main = "Perfomance of Boosting on Test Set")
+#adding the RandomForests Minimum Error line trained on same data and similar parameters
+abline(h = min(test.error),col="red") #test.err is the test error of a Random forest fitted on same data
+legend("topright",c("Minimum Test error Line for Random Forests"),col="red",lty=1,lwd=1)
+
+```
+
+```{r}
+# Since we converted the training response col, let's also convert the test response col
+#credit_test$default <- ifelse(credit_test$default == "yes", 1, 0)
+
+# Generate predictions on the test set
+preds1 <- predict(object = gbm_model, 
+                 newdata = nhanes_test,
+                 n.trees = 1000)
+
+# Generate predictions on the test set (scale to response)
+preds2 <- predict(object = gbm_model, 
+                 newdata = nhanes_test,
+                 n.trees = 1000,
+                 type = "response")
+
+# Compare the range of the two sets of predictions
+range(preds1)
+range(preds2)
+```
+
+
+```{r}
+library(pROC)
+#Generate the test set AUCs using the two sets of preditions & compare
+#auc(actual = nhanes_test$DIQ010, predicted = preds1, auc=TRUE)  #default
+#auc(actual = nhanes_test$DIQ010, predicted = preds2, auc=TRUE)  #rescaled
+```
+
+
+```{r}
+# Optimal ntree estimate based on OOB
+ntree_opt_oob <- gbm.perf(object = gbm_model, 
+                         method = "OOB", 
+                        oobag.curve = TRUE)
+
+# Train a CV GBM model
+set.seed(1)
+nhanes_model_cv <- gbm(formula = DIQ010 ~ ., 
+                      distribution = "bernoulli", 
+                      data = nhanes_train,
+                      n.trees = 10000,
+                      cv.folds = 2)
+                       
+# Optimal ntree estimate based on CV
+ntree_opt_cv <- gbm.perf(object = nhanes_model_cv, 
+                        method = "cv")
+                         
+# Compare the estimates                         
+print(paste0("Optimal n.trees (OOB Estimate): ", ntree_opt_oob))                         
+print(paste0("Optimal n.trees (CV Estimate): ", ntree_opt_cv))
+```
+gbm.perf() is a function to estimate the optimal number of boosting iterations. (trees to use for gradient boostin model. GBM)
+1.Hyperparameter tuining  to check for overfitting. Looking at Grid search on subset of the model.
+2. Tune number of tuning early stopping.
+3. Early stopping is when you stop the training proccess in an iterative algorithm by means of evaluating the model performance on the holdoutset. 
+4. In this example you we can use it in the gbm out of bag sample, separte validation set or by using cross-validation. It's best to stop training an iterative model after validation error has decreased and stabilize before the validation error starts to increase dure to overfitting(causeing bias of the model)
+5. OOB = computes the out of bag estimate 
+6. CV = extract the optimial number of iterations using cross validation.
+7. The graph shows around 100 iterations is optimal. 
+8. 
+
+```{r}
+# Generate predictions on the test set using ntree_opt_oob number of trees
+preds1 <- predict(object = gbm_model, 
+                 newdata = nhanes_test,
+                 n.trees = ntree_opt_oob)
+                  
+# Generate predictions on the test set using ntree_opt_cv number of trees
+preds2 <- predict(object = gbm_model, 
+                 newdata = nhanes_test,
+                 n.trees = ntree_opt_cv)   
+head(preds1)
+head(preds2)
+# Generate the test set AUCs using the two sets of preditions & compare
+#auc1 <- auc(actual = nhanes_test$DIQ010, predicted = preds1)  #OOB
+#auc2 <- auc(actual = nhanes_test$DIQ010, predicted = preds2)  #CV 
+
+# Compare the estimates                         
+print(paste0("Optimal n.trees (OOB Estimate): ", ntree_opt_oob))                         
+print(paste0("Optimal n.trees (CV Estimate): ", ntree_opt_cv))
+# Compare AUC 
+#print(paste0("Test set AUC (OOB): ", auc1))                         
+#print(paste0("Test set AUC (CV): ", auc2))
+```
+
+
+
+```{r}
+# Generate the test set AUCs using the two sets of predictions & compare
+#actual <- nhanes_test$DIQ010
+#head(actual)
+#dt_auc <- auc(actual = actual, predicted = dt_preds)
+#bag_auc <- auc(actual = actual, predicted = bag_preds)
+#rf_auc <- auc(actual = actual, predicted = rf_preds)
+#gbm_auc <- auc(actual = actual, predicted = gbm_preds)
+
+# Print results
+#sprintf("Bagged Trees Test AUC: %.3f", bag_auc)
+#sprintf("Random Forest Test AUC: %.3f", rf_auc)
+#sprintf("GBM Test AUC: %.3f", gbm_auc)
+```
+
+```{r}
+# List of predictions
+#preds_list <- list(dt_preds, bag_preds, rf_preds, gbm_preds)
+
+# List of actual values (same for all)
+#m <- length(preds_list)
+#actuals_list <- rep(list(credit_test$default), m)
+
+# Plot the ROC curves
+##rocs <- performance(pred, "tpr", "fpr")
+#plot(rocs, col = as.list(1:m), main = "Test Set ROC Curves")
+#legend(x = "bottomright", 
+ #      legend = c("Decision Tree", "Bagged Trees", "Random Forest", "GBM"),
+#       fill = 1:m)
+```
+
